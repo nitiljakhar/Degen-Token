@@ -10,6 +10,15 @@ contract DegenToken is ERC20, Ownable, ERC20Burnable {
     constructor() ERC20("Degen", "DGN") Ownable(msg.sender) ERC20Burnable() {
         // Initialize the contract with the initial owner as the caller of the contract
     }
+    struct RedeemableItem {
+        string name;
+        uint256 cost;
+        uint256 stock;
+    }
+
+    mapping(uint256 => RedeemableItem) public redeemableItems;
+    uint256 public nextItemId;
+
 
     function decimals() override public pure returns (uint8) {
         return 0;
@@ -19,7 +28,7 @@ contract DegenToken is ERC20, Ownable, ERC20Burnable {
         return this.balanceOf(msg.sender);
     }
 
-    function transferTokens(address receiver, uint256 value) external {
+   function transferTokens(address receiver, uint256 value) external {
         require(balanceOf(msg.sender) >= value, "You do not have enough Degen Tokens");
         approve(msg.sender, value);
         transferFrom(msg.sender, receiver, value);
@@ -28,5 +37,22 @@ contract DegenToken is ERC20, Ownable, ERC20Burnable {
     function burnTokens(uint256 _value) external {
         require(balanceOf(msg.sender) >= _value, "You do not have enough Degen Tokens");
         _burn(msg.sender, _value);
+    }
+
+    function addRedeemableItem(string memory name, uint256 cost, uint256 stock) external onlyOwner {
+        redeemableItems[nextItemId] = RedeemableItem(name, cost, stock);
+        nextItemId++;
+    }
+
+    function redeem(uint256 itemId, uint256 quantity) external {
+        RedeemableItem storage item = redeemableItems[itemId];
+        require(item.stock >= quantity, "Not enough stock for the requested item");
+        uint256 totalCost = item.cost * quantity;
+        require(balanceOf(msg.sender) >= totalCost, "You do not have enough Degen Tokens");
+
+        _burn(msg.sender, totalCost);
+        item.stock -= quantity;
+
+        console.log("User %s redeemed %s of item %s", msg.sender, quantity, item.name);
     }
 }
